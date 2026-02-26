@@ -23,6 +23,7 @@ PIN_CODE = "9999"
 # ########################################################
 
 def fetch_otp_from_master():
+    """Master email se latest Microsoft security code nikalna"""
     try:
         # 100 seconds total wait time for OTP
         for _ in range(10): 
@@ -40,25 +41,21 @@ def extraction_engine(email, password, page):
     try:
         page.goto("https://login.live.com/", wait_until="networkidle")
         
-        # 1. Email Phase (Increased Timeout to 30s)
+        # 1. Email Phase
         page.wait_for_selector("input[type='email']", timeout=30000)
         page.fill("input[type='email']", email)
         page.keyboard.press("Enter")
         
-        # Wait for page to react after Enter
         time.sleep(5) 
         page.wait_for_load_state("networkidle")
         
-        # 2. Password Phase (Increased Timeout to 30s)
+        # 2. Password Phase
         try:
             page.wait_for_selector("input[type='password']", timeout=30000)
             page.fill("input[type='password']", password)
             page.keyboard.press("Enter")
         except Exception:
-            # Screenshot if password field doesn't show up
-            page.screenshot(path="login_fail.png")
-            st.image("login_fail.png", caption="Stuck at this screen")
-            return "Error: Password field not found (Timeout)"
+            return "Error: Password field not found"
             
         time.sleep(6)
         page.wait_for_load_state("networkidle")
@@ -102,7 +99,8 @@ def extraction_engine(email, password, page):
 st.set_page_config(page_title="Bulk Extractor Pro", layout="wide")
 st.title("🚀 LinkedIn 2FA Bulk Automation")
 
-if st.text_input("Security PIN", type="password") != PIN_CODE:
+security_pin = st.text_input("Security PIN", type="password")
+if security_pin != PIN_CODE:
     st.stop()
 
 t1, t2 = st.tabs(["👤 Single Account", "📂 Bulk CSV/Excel"])
@@ -133,28 +131,5 @@ with t2:
         df['LinkedIn_Link'] = results
         st.success("All Done!")
         st.dataframe(df)
-        st.download_button("📥 Download Result", df.to_csv(index=False), "results.csv")    pwd = st.text_input("Password", type="password")
-    if st.button("Extract Now"):
-        with st.spinner("Bypassing security..."):
-            with sync_playwright() as pw:
-                browser = pw.chromium.launch(headless=True)
-                res = extraction_engine(usr, pwd, browser.new_page())
-                st.code(res)
-                browser.close()
-
-with t2:
-    st.write("Upload file with 'email' and 'password' columns.")
-    file = st.file_uploader("Select File", type=['csv', 'xlsx'])
-    if file and st.button("Execute Bulk Run"):
-        df = pd.read_csv(file) if file.name.endswith('.csv') else pd.read_excel(file)
-        results = []
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True)
-            for _, row in df.iterrows():
-                st.write(f"⚙️ Cracking: {row['email']}")
-                results.append(extraction_engine(row['email'], row['password'], browser.new_page()))
-            browser.close()
-        df['LinkedIn_Link'] = results
-        st.success("All Done!")
-        st.dataframe(df)
-        st.download_button("📥 Download Final Report", df.to_csv(index=False), "extracted_data.csv")
+        csv_data = df.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Download Result", csv_data, "results.csv", "text/csv")
