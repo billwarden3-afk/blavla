@@ -23,7 +23,9 @@ PIN_CODE = "9999"
 # ########################################################
 
 def fetch_otp_from_master():
+    """Master email se latest Microsoft security code nikalna"""
     try:
+        # 100 seconds total wait time for OTP
         for _ in range(10): 
             time.sleep(10)
             with MailBox(IMAP_SERVER).login(MASTER_EMAIL, MASTER_PASS) as mailbox:
@@ -44,25 +46,21 @@ def extraction_engine(email, password, page):
         page.fill("input[type='email']", email)
         page.keyboard.press("Enter")
         
-        # Give extra time for Microsoft to process the email
         time.sleep(7) 
         
         # 2. Check for Account Selection or Password
-        # Kabhi-kabhi Microsoft "Select an account" dikhata hai
         if page.locator(f"text={email}").is_visible():
             page.click(f"text={email}")
             time.sleep(5)
 
         try:
-            # Ab password ka wait karenge
             page.wait_for_selector("input[type='password']", timeout=30000)
             page.fill("input[type='password']", password)
             page.keyboard.press("Enter")
         except Exception:
-            # Agar ab bhi password nahi mila, screenshot le lo
             page.screenshot(path="stuck.png")
             st.image("stuck.png", caption=f"Bot stuck while processing {email}")
-            return "Error: Password field not found (Check Image)"
+            return "Error: Password field not found"
             
         time.sleep(8)
         
@@ -90,7 +88,6 @@ def extraction_engine(email, password, page):
         time.sleep(10)
         
         try:
-            # Message list mein pehla email
             page.wait_for_selector("div[aria-label='Message list']", timeout=20000)
             page.click("div[aria-label='Message list'] div[role='option']:first-child")
             time.sleep(5)
@@ -111,6 +108,7 @@ security_pin = st.text_input("Security PIN", type="password")
 if security_pin != PIN_CODE:
     st.stop()
 
+# --- TABS SETUP ---
 t1, t2 = st.tabs(["👤 Single Account", "📂 Bulk CSV/Excel"])
 
 with t1:
@@ -140,33 +138,9 @@ with t2:
         st.success("All Done!")
         st.dataframe(df)
         csv_data = df.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Download Result", csv_data, "results.csv", "text/csv")t1, t2 = st.tabs(["👤 Single Account", "📂 Bulk CSV/Excel"])
-
-with t1:
-    usr = st.text_input("Outlook Email")
-    pwd = st.text_input("Password", type="password")
-    if st.button("Extract Now"):
-        with st.spinner("Bypassing security..."):
-            with sync_playwright() as pw:
-                browser = pw.chromium.launch(headless=True)
-                res = extraction_engine(usr, pwd, browser.new_page())
-                st.code(res)
-                browser.close()
-
-with t2:
-    st.write("Upload file with 'email' and 'password' columns.")
-    file = st.file_uploader("Select File", type=['csv', 'xlsx'])
-    if file and st.button("Execute Bulk Run"):
-        df = pd.read_csv(file) if file.name.endswith('.csv') else pd.read_excel(file)
-        results = []
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True)
-            for _, row in df.iterrows():
-                st.write(f"⚙️ Cracking: {row['email']}")
-                results.append(extraction_engine(row['email'], row['password'], browser.new_page()))
-            browser.close()
-        df['LinkedIn_Link'] = results
-        st.success("All Done!")
-        st.dataframe(df)
-        csv_data = df.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Download Result", csv_data, "results.csv", "text/csv")
+        st.download_button(
+            label="📥 Download Result",
+            data=csv_data,
+            file_name="results.csv",
+            mime="text/csv"
+                )
