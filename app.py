@@ -37,16 +37,16 @@ if st.button("Extract Link"):
                     page.goto("https://login.live.com/")
                     time.sleep(3) 
                     
-                    # 1. Enter Email 
-                    page.wait_for_selector("input[name='loginfmt']", timeout=15000)
-                    page.fill("input[name='loginfmt']", email)
-                    page.click("#idSIButton9") 
+                    # 1. Enter Email (Reverted to the locator we know works)
+                    page.wait_for_selector("input[type='email']", timeout=15000)
+                    page.fill("input[type='email']", email)
+                    page.click("#idSIButton9") # Microsoft's specific Next button
                     time.sleep(3) 
                     
-                    # 2. Enter Password
-                    page.wait_for_selector("input[name='passwd']", timeout=15000)
-                    page.fill("input[name='passwd']", password)
-                    page.click("#idSIButton9") 
+                    # 2. Enter Password (Reverted to the locator we know works)
+                    page.wait_for_selector("input[type='password']", timeout=15000)
+                    page.fill("input[type='password']", password)
+                    page.click("#idSIButton9") # Microsoft's specific Sign In button
                     time.sleep(4) 
                     
                     # 3. Bypass "Stay signed in?" screen
@@ -74,9 +74,8 @@ if st.button("Extract Link"):
                         
                 except Exception as e:
                     st.error(f"❌ Automation Error: {str(e)}")
-                    # --- THE X-RAY SCREENSHOT (Now safely inside the active session) ---
+                    # --- THE X-RAY SCREENSHOT ---
                     page.screenshot(path="crash_screenshot.png")
                     st.image("crash_screenshot.png", caption="What the bot saw right before it crashed.")
                 finally:
-                    # Guarantee the browser closes only after everything is done
                     browser.close()
