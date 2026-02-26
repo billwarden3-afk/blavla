@@ -36,20 +36,21 @@ if st.button("Extract Link"):
                     page = browser.new_page()
                     
                     page.goto("https://login.live.com/")
+                    time.sleep(3) # Let the page fully load its security scripts
                     
-                    # 1. Enter Email
-                    page.wait_for_selector("input[type='email']", timeout=15000)
-                    page.fill("input[type='email']", email)
-                    page.click("#idSIButton9") # Microsoft's specific Next button
-                    time.sleep(2) 
-                    
-                    # 2. Enter Password
-                    page.wait_for_selector("input[type='password']", timeout=15000)
-                    page.fill("input[type='password']", password)
-                    page.click("#idSIButton9") # Microsoft's specific Sign In button
+                    # 1. Enter Email using Microsoft's internal 'name' attribute
+                    page.wait_for_selector("input[name='loginfmt']", timeout=15000)
+                    page.fill("input[name='loginfmt']", email)
+                    page.click("#idSIButton9") 
                     time.sleep(3) 
                     
-                    # 3. Bypass "Stay signed in?" screen if it appears
+                    # 2. Enter Password
+                    page.wait_for_selector("input[name='passwd']", timeout=15000)
+                    page.fill("input[name='passwd']", password)
+                    page.click("#idSIButton9") 
+                    time.sleep(4) 
+                    
+                    # 3. Bypass "Stay signed in?" screen
                     if page.locator("#idSIButton9").is_visible():
                         page.click("#idSIButton9")
                         time.sleep(3)
@@ -59,14 +60,11 @@ if st.button("Extract Link"):
                     page.goto(search_url)
                     time.sleep(6) 
                     
-                    # Click the first email in the search results
                     page.click("div[aria-label='Message list'] div[role='option']:first-child") 
                     time.sleep(4)
 
-                    # Extract the text
                     body_text = page.inner_text("div[aria-label='Reading Pane']")
                     
-                    # Find the promo link
                     match = re.search(r'(https://www\.linkedin\.com/premium/redeem\S+)', body_text)
                     if match:
                         clean_link = match.group(1).rstrip('"> \n')
@@ -78,3 +76,7 @@ if st.button("Extract Link"):
                     browser.close()
             except Exception as e:
                 st.error(f"❌ Automation Error: {str(e)}")
+                # --- THE X-RAY SCREENSHOT ---
+                page.screenshot(path="crash_screenshot.png")
+                st.image("crash_screenshot.png", caption="What the bot saw right before it crashed.")
+                browser.close()
