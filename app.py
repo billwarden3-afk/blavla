@@ -4,7 +4,7 @@ import re
 import time
 import os
 
-# This silently installs the browser on the server once, avoiding Docker entirely
+# --- SILENT BROWSER INSTALLATION ---
 @st.cache_resource
 def install_browser():
     os.system("playwright install chromium")
@@ -13,9 +13,17 @@ def install_browser():
 install_browser()
 
 st.title("🔗 LinkedIn Promo Extractor")
+
+# --- THE SECURITY WALL ---
+# Change "9999" to whatever secret PIN you want
+secret_pin = st.text_input("Enter Access PIN", type="password")
+if secret_pin != "9999":  
+    st.warning("Enter the correct PIN to unlock the extractor.")
+    st.stop() # Stops the rest of the page from loading
+# -------------------------
+
 st.write("Enter the Outlook credentials below to extract the Premium link.")
 
-# The input fields on your private website
 email = st.text_input("Outlook Email")
 password = st.text_input("Password", type="password")
 
@@ -62,4 +70,3 @@ if st.button("Extract Link"):
                     st.error(f"❌ Automation Error: {str(e)}")
                 finally:
                     browser.close()
-                  
