@@ -23,9 +23,7 @@ PIN_CODE = "9999"
 # ########################################################
 
 def fetch_otp_from_master():
-    """Master email se latest Microsoft security code nikalna"""
     try:
-        # 100 seconds total wait time for OTP
         for _ in range(10): 
             time.sleep(10)
             with MailBox(IMAP_SERVER).login(MASTER_EMAIL, MASTER_PASS) as mailbox:
@@ -39,26 +37,34 @@ def fetch_otp_from_master():
 
 def extraction_engine(email, password, page):
     try:
-        page.goto("https://login.live.com/", wait_until="networkidle")
+        page.goto("https://login.live.com/", wait_until="networkidle", timeout=60000)
         
         # 1. Email Phase
         page.wait_for_selector("input[type='email']", timeout=30000)
         page.fill("input[type='email']", email)
         page.keyboard.press("Enter")
         
-        time.sleep(5) 
-        page.wait_for_load_state("networkidle")
+        # Give extra time for Microsoft to process the email
+        time.sleep(7) 
         
-        # 2. Password Phase
+        # 2. Check for Account Selection or Password
+        # Kabhi-kabhi Microsoft "Select an account" dikhata hai
+        if page.locator(f"text={email}").is_visible():
+            page.click(f"text={email}")
+            time.sleep(5)
+
         try:
+            # Ab password ka wait karenge
             page.wait_for_selector("input[type='password']", timeout=30000)
             page.fill("input[type='password']", password)
             page.keyboard.press("Enter")
         except Exception:
-            return "Error: Password field not found"
+            # Agar ab bhi password nahi mila, screenshot le lo
+            page.screenshot(path="stuck.png")
+            st.image("stuck.png", caption=f"Bot stuck while processing {email}")
+            return "Error: Password field not found (Check Image)"
             
-        time.sleep(6)
-        page.wait_for_load_state("networkidle")
+        time.sleep(8)
         
         # 3. 2FA Bypass
         if "identity/confirm" in page.url or page.locator("text=Verify your identity").is_visible():
@@ -74,23 +80,25 @@ def extraction_engine(email, password, page):
                 if code:
                     page.fill("input[name='otc']", code)
                     page.keyboard.press("Enter")
-                    time.sleep(6)
+                    time.sleep(7)
                 else:
                     return "Error: OTP Timeout"
 
         # 4. Final Extraction
         search_url = "https://outlook.live.com/mail/0/inbox/search/subject:Claim%20your%20LinkedIn%20Premium"
-        page.goto(search_url, wait_until="networkidle")
+        page.goto(search_url, wait_until="networkidle", timeout=60000)
         time.sleep(10)
         
         try:
-            page.click("div[aria-label='Message list'] div[role='option']:first-child", timeout=20000)
+            # Message list mein pehla email
+            page.wait_for_selector("div[aria-label='Message list']", timeout=20000)
+            page.click("div[aria-label='Message list'] div[role='option']:first-child")
             time.sleep(5)
             body = page.inner_text("div[aria-label='Reading Pane']")
             match = re.search(r'(https://www\.linkedin\.com/premium/redeem\S+)', body)
             return match.group(1).rstrip('"> \n') if match else "Link Not Found"
         except:
-            return "Email/Link Not Found"
+            return "Email/Link Not Found in Inbox"
             
     except Exception as e:
         return f"Process Failed: {str(e)}"
@@ -104,6 +112,35 @@ if security_pin != PIN_CODE:
     st.stop()
 
 t1, t2 = st.tabs(["👤 Single Account", "📂 Bulk CSV/Excel"])
+
+with t1:
+    usr = st.text_input("Outlook Email")
+    pwd = st.text_input("Password", type="password")
+    if st.button("Extract Now"):
+        with st.spinner("Bypassing security..."):
+            with sync_playwright() as pw:
+                browser = pw.chromium.launch(headless=True)
+                res = extraction_engine(usr, pwd, browser.new_page())
+                st.success(f"Result: {res}")
+                browser.close()
+
+with t2:
+    st.write("Upload file with 'email' and 'password' columns.")
+    file = st.file_uploader("Select File", type=['csv', 'xlsx'])
+    if file and st.button("Execute Bulk Run"):
+        df = pd.read_csv(file) if file.name.endswith('.csv') else pd.read_excel(file)
+        results = []
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True)
+            for _, row in df.iterrows():
+                st.write(f"⚙️ Cracking: {row['email']}")
+                results.append(extraction_engine(row['email'], row['password'], browser.new_page()))
+            browser.close()
+        df['LinkedIn_Link'] = results
+        st.success("All Done!")
+        st.dataframe(df)
+        csv_data = df.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Download Result", csv_data, "results.csv", "text/csv")t1, t2 = st.tabs(["👤 Single Account", "📂 Bulk CSV/Excel"])
 
 with t1:
     usr = st.text_input("Outlook Email")
