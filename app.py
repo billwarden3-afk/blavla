@@ -30,34 +30,40 @@ if st.button("Extract Link"):
         st.warning("Please enter both email and password.")
     else:
         with st.spinner("⏳ Firing up cloud browser and logging in..."):
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                page = browser.new_page()
-                try:
+            try:
+                with sync_playwright() as p:
+                    browser = p.chromium.launch(headless=True)
+                    page = browser.new_page()
+                    
                     page.goto("https://login.live.com/")
                     time.sleep(3) 
                     
-                    # 1. Enter Email (Reverted to the locator we know works)
+                    # 1. Enter Email and hit ENTER on the keyboard
                     page.wait_for_selector("input[type='email']", timeout=15000)
                     page.fill("input[type='email']", email)
-                    page.click("#idSIButton9") # Microsoft's specific Next button
-                    time.sleep(3) 
-                    
-                    # 2. Enter Password (Reverted to the locator we know works)
-                    page.wait_for_selector("input[type='password']", timeout=15000)
-                    page.fill("input[type='password']", password)
-                    page.click("#idSIButton9") # Microsoft's specific Sign In button
+                    time.sleep(1)
+                    page.keyboard.press("Enter") 
                     time.sleep(4) 
                     
+                    # 2. Enter Password and hit ENTER on the keyboard
+                    page.wait_for_selector("input[type='password']", timeout=15000)
+                    page.fill("input[type='password']", password)
+                    time.sleep(1)
+                    page.keyboard.press("Enter") 
+                    time.sleep(5) 
+                    
                     # 3. Bypass "Stay signed in?" screen
-                    if page.locator("#idSIButton9").is_visible():
-                        page.click("#idSIButton9")
-                        time.sleep(3)
+                    try:
+                        if page.locator("text=Yes").is_visible(timeout=3000):
+                            page.click("text=Yes")
+                            time.sleep(3)
+                    except:
+                        pass # Ignore if it doesn't appear
 
                     # 4. Search for the LinkedIn email
                     search_url = "https://outlook.live.com/mail/0/inbox/search/subject:Claim%20your%20LinkedIn%20Premium"
                     page.goto(search_url)
-                    time.sleep(6) 
+                    time.sleep(7) 
                     
                     page.click("div[aria-label='Message list'] div[role='option']:first-child") 
                     time.sleep(4)
@@ -72,10 +78,11 @@ if st.button("Extract Link"):
                     else:
                         st.error("⚠️ Logged in, but couldn't find the link in the top email.")
                         
-                except Exception as e:
-                    st.error(f"❌ Automation Error: {str(e)}")
-                    # --- THE X-RAY SCREENSHOT ---
-                    page.screenshot(path="crash_screenshot.png")
-                    st.image("crash_screenshot.png", caption="What the bot saw right before it crashed.")
-                finally:
+            except Exception as e:
+                st.error(f"❌ Automation Error: {str(e)}")
+                # --- THE X-RAY SCREENSHOT ---
+                page.screenshot(path="crash_screenshot.png")
+                st.image("crash_screenshot.png", caption="What the bot saw right before it crashed.")
+            finally:
+                if 'browser' in locals():
                     browser.close()
