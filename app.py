@@ -5,17 +5,18 @@ import time
 import os
 
 # --- SILENT BROWSER INSTALLATION ---
+# This installs the Chromium browser. The Linux graphics 
+# dependencies are handled automatically by packages.txt
 @st.cache_resource
 def install_browser():
     os.system("playwright install chromium")
-    os.system("playwright install-deps chromium")
 
 install_browser()
 
 st.title("🔗 LinkedIn Promo Extractor")
 
 # --- THE SECURITY WALL ---
-# Change "9999" to whatever secret PIN you want
+# Remember, your PIN is 9999
 secret_pin = st.text_input("Enter Access PIN", type="password")
 if secret_pin != "9999":  
     st.warning("Enter the correct PIN to unlock the extractor.")
@@ -32,10 +33,11 @@ if st.button("Extract Link"):
         st.warning("Please enter both email and password.")
     else:
         with st.spinner("⏳ Firing up cloud browser and logging in..."):
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                page = browser.new_page()
-                try:
+            try:
+                with sync_playwright() as p:
+                    browser = p.chromium.launch(headless=True)
+                    page = browser.new_page()
+                    
                     page.goto("https://login.live.com/")
                     page.fill("input[type='email']", email)
                     page.click("input[type='submit']")
@@ -49,7 +51,7 @@ if st.button("Extract Link"):
                         page.click("text=Yes")
                         time.sleep(3)
 
-                    search_url = f"https://outlook.live.com/mail/0/inbox/search/subject:Claim%20your%20LinkedIn%20Premium"
+                    search_url = "https://outlook.live.com/mail/0/inbox/search/subject:Claim%20your%20LinkedIn%20Premium"
                     page.goto(search_url)
                     time.sleep(5) 
                     
@@ -66,7 +68,6 @@ if st.button("Extract Link"):
                     else:
                         st.error("⚠️ Logged in, but couldn't find the link in the top email.")
                         
-                except Exception as e:
-                    st.error(f"❌ Automation Error: {str(e)}")
-                finally:
                     browser.close()
+            except Exception as e:
+                st.error(f"❌ Automation Error: {str(e)}")
