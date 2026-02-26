@@ -30,15 +30,14 @@ if st.button("Extract Link"):
         st.warning("Please enter both email and password.")
     else:
         with st.spinner("⏳ Firing up cloud browser and logging in..."):
-            try:
-                with sync_playwright() as p:
-                    browser = p.chromium.launch(headless=True)
-                    page = browser.new_page()
-                    
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page()
+                try:
                     page.goto("https://login.live.com/")
-                    time.sleep(3) # Let the page fully load its security scripts
+                    time.sleep(3) 
                     
-                    # 1. Enter Email using Microsoft's internal 'name' attribute
+                    # 1. Enter Email 
                     page.wait_for_selector("input[name='loginfmt']", timeout=15000)
                     page.fill("input[name='loginfmt']", email)
                     page.click("#idSIButton9") 
@@ -73,10 +72,11 @@ if st.button("Extract Link"):
                     else:
                         st.error("⚠️ Logged in, but couldn't find the link in the top email.")
                         
+                except Exception as e:
+                    st.error(f"❌ Automation Error: {str(e)}")
+                    # --- THE X-RAY SCREENSHOT (Now safely inside the active session) ---
+                    page.screenshot(path="crash_screenshot.png")
+                    st.image("crash_screenshot.png", caption="What the bot saw right before it crashed.")
+                finally:
+                    # Guarantee the browser closes only after everything is done
                     browser.close()
-            except Exception as e:
-                st.error(f"❌ Automation Error: {str(e)}")
-                # --- THE X-RAY SCREENSHOT ---
-                page.screenshot(path="crash_screenshot.png")
-                st.image("crash_screenshot.png", caption="What the bot saw right before it crashed.")
-                browser.close()
