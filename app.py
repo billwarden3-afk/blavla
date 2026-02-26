@@ -5,8 +5,6 @@ import time
 import os
 
 # --- SILENT BROWSER INSTALLATION ---
-# This installs the Chromium browser. The Linux graphics 
-# dependencies are handled automatically by packages.txt
 @st.cache_resource
 def install_browser():
     os.system("playwright install chromium")
@@ -16,11 +14,10 @@ install_browser()
 st.title("🔗 LinkedIn Promo Extractor")
 
 # --- THE SECURITY WALL ---
-# Remember, your PIN is 9999
 secret_pin = st.text_input("Enter Access PIN", type="password")
 if secret_pin != "9999":  
     st.warning("Enter the correct PIN to unlock the extractor.")
-    st.stop() # Stops the rest of the page from loading
+    st.stop() 
 # -------------------------
 
 st.write("Enter the Outlook credentials below to extract the Premium link.")
@@ -39,27 +36,37 @@ if st.button("Extract Link"):
                     page = browser.new_page()
                     
                     page.goto("https://login.live.com/")
+                    
+                    # 1. Enter Email
+                    page.wait_for_selector("input[type='email']", timeout=15000)
                     page.fill("input[type='email']", email)
-                    page.click("input[type='submit']")
+                    page.click("#idSIButton9") # Microsoft's specific Next button
                     time.sleep(2) 
                     
+                    # 2. Enter Password
+                    page.wait_for_selector("input[type='password']", timeout=15000)
                     page.fill("input[type='password']", password)
-                    page.click("input[type='submit']")
+                    page.click("#idSIButton9") # Microsoft's specific Sign In button
                     time.sleep(3) 
                     
-                    if page.locator("text=Yes").is_visible():
-                        page.click("text=Yes")
+                    # 3. Bypass "Stay signed in?" screen if it appears
+                    if page.locator("#idSIButton9").is_visible():
+                        page.click("#idSIButton9")
                         time.sleep(3)
 
+                    # 4. Search for the LinkedIn email
                     search_url = "https://outlook.live.com/mail/0/inbox/search/subject:Claim%20your%20LinkedIn%20Premium"
                     page.goto(search_url)
-                    time.sleep(5) 
+                    time.sleep(6) 
                     
+                    # Click the first email in the search results
                     page.click("div[aria-label='Message list'] div[role='option']:first-child") 
-                    time.sleep(3)
+                    time.sleep(4)
 
+                    # Extract the text
                     body_text = page.inner_text("div[aria-label='Reading Pane']")
                     
+                    # Find the promo link
                     match = re.search(r'(https://www\.linkedin\.com/premium/redeem\S+)', body_text)
                     if match:
                         clean_link = match.group(1).rstrip('"> \n')
